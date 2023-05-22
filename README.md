@@ -1,24 +1,11 @@
 # Detectores_json_k_dobras
 __Autores__: Código cedido pelo Prof. Jonathan Andrade Silva (UFMS) 
 
-Adaptações feitas por Hemerson Pistori (pistori@ucdb.br) e Marcelo Kuchar (marcelokuchar@gmail.com)
-
-__Versao__: 1.1.0
-
 __Objetivo__: Facilitar a aplicação de validação cruzada em k dobras e gerar resultados da aplicação 
 de diversos detectores do pacote mmdetection em uma banco de imagens anotadas pelo Roboflow no formato COCO Json
 
 
 ### Instalação e dependências:
-
-#### Para rodar no Google Colab 
-
-- Faça download e descompacte ou clone (se souber usar o git) este projeto na sua máquina
-- Entre no site https://colab.research.google.com/
-- Crie uma conta no Colab caso ainda não tenha (dá para usar a do seu gmail)
-- Utilize a opção Upload e suba o arquivo notebook jupyter chamado **experimento_colab.ipynb** que estará na pasta chamada detectores_json_k_dobras depois que você clonar o projeto. Se fizer por download, terá que trocar o nome da pasta de detectores_json_k_dobras_tf2_master para detectores_json_k_dobras.
-- Siga as instruções que estão em **experimento_colab.ipynb** depois de subí-lo no Colab
-
 
 #### Para rodar na sua própria máquina:
 

@@ -13,7 +13,7 @@ EPOCAS=5
 LIMIAR_CLASSIFICADOR=0.5
 # Define a quantidade mínima de sobreposição necessária para considerar uma detecção como verdadeira positiva.
 # Vou utilizar um valor baixo pois o objetivo nao e identificar a posicao, e sim, a quantidade
-LIMIAR_IOU=0.1
+LIMIAR_IOU=0
 
 APENAS_TESTA=False
 SALVAR_IMAGENS=True
