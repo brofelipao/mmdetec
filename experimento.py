@@ -100,7 +100,7 @@ plt.rcParams["axes.grid"] = False
 
 
 #Taxa de Aprendizado para cada Rede, seguindo a sequencia que aparece no MODELS_CONFIG
-TAXA_APRENDIZAGEM=[0.01,0.01,0.01,0.01,0.01,0.01]
+TAXA_APRENDIZAGEM=[0.05,0.01,0.05,0.01,0.05,0.05]
 
 
 MODELS_CONFIG = {
@@ -108,10 +108,10 @@ MODELS_CONFIG = {
         'config_file': 'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py',
         'checkpoint': pasta_checkpoints+'/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth'
     },
-    'retinanet':{
-        'config_file': 'configs/retinanet/retinanet_r50_fpn_1x_coco.py',
-        'checkpoint': pasta_checkpoints+'/retinanet_r50_fpn_1x_coco_20200130-c2398f9e.pth'
-    },
+    # 'retinanet':{
+    #     'config_file': 'configs/retinanet/retinanet_r50_fpn_1x_coco.py',
+    #     'checkpoint': pasta_checkpoints+'/retinanet_r50_fpn_1x_coco_20200130-c2398f9e.pth'
+    # },
 #    'atss':{
 #        'config_file': 'configs/atss/atss_r50_fpn_1x_coco.py',
 #        'checkpoint' : pasta_checkpoints+'/atss_r50_fpn_1x_coco_20200209-985f7bd0.pth'
