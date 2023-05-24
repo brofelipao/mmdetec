@@ -8,8 +8,8 @@
 # DEFINE ALGUNS HIPERPARÂMETROS
 
 CLASSES=('larvae',)
-DOBRAS=1
-EPOCAS=5
+DOBRAS=5
+EPOCAS=15
 LIMIAR_CLASSIFICADOR=0.5
 # Define a quantidade mínima de sobreposição necessária para considerar uma detecção como verdadeira positiva.
 # Vou utilizar um valor baixo pois o objetivo nao e identificar a posicao, e sim, a quantidade
@@ -108,10 +108,10 @@ MODELS_CONFIG = {
         'config_file': 'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py',
         'checkpoint': pasta_checkpoints+'/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth'
     },
-    # 'retinanet':{
-    #     'config_file': 'configs/retinanet/retinanet_r50_fpn_1x_coco.py',
-    #     'checkpoint': pasta_checkpoints+'/retinanet_r50_fpn_1x_coco_20200130-c2398f9e.pth'
-    # },
+    'retinanet':{
+        'config_file': 'configs/retinanet/retinanet_r50_fpn_1x_coco.py',
+        'checkpoint': pasta_checkpoints+'/retinanet_r50_fpn_1x_coco_20200130-c2398f9e.pth'
+    },
 #    'atss':{
 #        'config_file': 'configs/atss/atss_r50_fpn_1x_coco.py',
 #        'checkpoint' : pasta_checkpoints+'/atss_r50_fpn_1x_coco_20200209-985f7bd0.pth'
@@ -169,7 +169,7 @@ def setCFG(selected_model,
   cfg.data.test.type = cfg.dataset_type
   cfg.data.test.data_root = cfg.data_root
   # cfg.data.test.ann_file = 'filesJSON/instances.json'
-  cfg.data.test.ann_file = 'filesJSON/_annotations_test.json'
+  cfg.data.test.ann_file = f'filesJSON/{fold}_test.json'
   cfg.data.test.classes = cfg.classes
   cfg.data.test.img_prefix = 'all/train' # As imagens ficam todos em all/train mesmo 
   # SÃO OS ARQUIVO .JSON QUE FAZEM A DIVISÃO"
@@ -178,7 +178,7 @@ def setCFG(selected_model,
   cfg.data.train.type = cfg.dataset_type
   cfg.data.train.data_root = cfg.data_root
   #cfg.data.train.ann_file = 'filesJSON/instances.json'
-  cfg.data.train.ann_file = 'filesJSON/_annotations_train.json'
+  cfg.data.train.ann_file = f'filesJSON/{fold}_train.json'
   cfg.data.train.classes = cfg.classes
   cfg.data.train.img_prefix = 'all/train'# As imagens ficam todos em all/train mesmo 
   # SÃO OS ARQUIVO .JSON QUE FAZEM A DIVISÃO"
@@ -187,7 +187,7 @@ def setCFG(selected_model,
   cfg.data.val.type = cfg.dataset_type
   cfg.data.val.data_root = cfg.data_root
   # cfg.data.val.ann_file = 'filesJSON/instances.json'
-  cfg.data.val.ann_file = 'filesJSON/_annotations_val.json'
+  cfg.data.val.ann_file = f'filesJSON/{fold}_val.json'
   cfg.data.val.classes = cfg.classes
   cfg.data.val.img_prefix =  'all/train' # As imagens ficam todos em train mesmo 
   # SÃO OS ARQUIVO .JSON QUE FAZEM A DIVISÃO"
