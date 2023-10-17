@@ -11,8 +11,8 @@ import os
 
 CLASSES=()
 DOBRAS=0 # Não precisa mais mexer, vai calcular automaticamente.
-EPOCAS=5
-LIMIAR_CLASSIFICADOR=0.5
+EPOCAS=15
+LIMIAR_CLASSIFICADOR=0.3
 LIMIAR_IOU=0.3
 
 APENAS_TESTA=False
