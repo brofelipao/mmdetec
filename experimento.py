@@ -11,8 +11,8 @@ import os
 
 CLASSES=()
 DOBRAS=0 # Não precisa mais mexer, vai calcular automaticamente.
-EPOCAS=15
-LIMIAR_CLASSIFICADOR=0.3
+EPOCAS=10
+LIMIAR_CLASSIFICADOR=0.4
 LIMIAR_IOU=0.3
 
 APENAS_TESTA=False
@@ -82,7 +82,6 @@ from sklearn.metrics import mean_absolute_error
 import math
 import wget
 from url import url
-
 
 
 sys.path.append('mmdetection')
@@ -338,6 +337,8 @@ def trainModel(cfg):
   #model = build_detector(
   #    cfg.model)
   model = build_detector(cfg.model,train_cfg=cfg.get('train_cfg'),test_cfg=cfg.get('test_cfg'))
+
+
   # Add an attribute for visualization convenience
   model.CLASSES = datasets[0].CLASSES
 
