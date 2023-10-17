@@ -60,41 +60,54 @@ contaDobras <- dados[dados$ml == nets[1], ]
 
 DOBRAS=nrow(contaDobras)
 
-# GAMBIARRA PARA PEGAR O TOTAL DE ÉPOCAS DE DENTRO DE experimento.py 
+# ALERTA DE GAMBIARRA 
+# Pega o total de épocas de dentro do arquivo experimento.py 
 log <- readLines('experimento.py')
 log <-log[grepl('EPOCAS=',log)]
 logTable <- read.table(text = log,sep='=')
 EPOCAS=logTable[1,2]
 
-# GAMBIARRA PARA ENCONTRAR E PEGAR DADOS DO ARQUIVO DE LOG
+# ALERTA DE GAMBIARRA
+# Pega dentro do arquivo de LOG os valores de perda no conjunto
+# de validação (loss_val) para cada época da primeira dobra
 
 logFile <- list.files(".", "log$", recursive=TRUE, full.names=TRUE, include.dirs=TRUE)
 tail(file.info(logFile)$ctime) #mostrando a data de modificação deles
 ultimoLog <- logFile[length(logFile)] #extraindo o ultimo elemento(ultima posição do vetor)
 log <- readLines(ultimoLog)
 epocas <-log[grepl('- mmdet - INFO - Epoch\\(',log)]
-epocas <- gsub("[,:\\[]", " ", epocas)
-epocas <- gsub("[]]", " ", epocas)
-epocas <- gsub("loss ", ",", epocas)
+epocas <- gsub(".*loss_val: ([0-9.]+).*", "\\1", epocas)
 
-epocasVal <- read.table(text = epocas,sep=',')
+epocasVal <- read.table(text = epocas,sep=' ')
 
-#epocasVal <- epocasVal[ , c("V2")]
-colnames(epocasVal) <- c("rest","loss")
+colnames(epocasVal) <- c("loss")
 
 folds <- sprintf("fold_%d",seq(1:DOBRAS))
 epochs <- 1:EPOCAS
 
 novasColunas <- tidyr::crossing(nets,folds,epochs)
 
+# Testa se epocasVal tem mais linhas que novasColunas e remove
+# as linhas adicionais 
+if (nrow(epocasVal) > nrow(novasColunas)) {
+   epocasVal <- epocasVal[1:nrow(novasColunas),]
+} else if (nrow(epocasVal) < nrow(novasColunas)) {
+   novasColunas <- novasColunas[1:nrow(epocasVal),]
+}
+
 dadosEpocas <- cbind(novasColunas,epocasVal)
+
+# Troca o nome da coluna epocasVal por loss
+colnames(dadosEpocas)[4] <- "loss"
 write.csv(dadosEpocas,'./dataset/epocas.csv')
 
 # Pegando apenas dados da primeira dobra 
 filtrado <- dadosEpocas[dadosEpocas$folds == "fold_1",]
 filtrado <- filtrado[filtrado$nets != "NA", ]
+# Para evitar que valores muito grandes de perda na validação deixem
+# o gráfico difícil de ver, os valores maiores que 5 são transformados
+# em 5
 filtrado$loss[filtrado$loss > 5] <- 5
-print(filtrado)
 TITULO = sprintf("Validation loss evolution during training")
 g <- ggplot(filtrado, aes(x=epochs, y=loss, colour=nets, group=nets)) +
     geom_line() +
@@ -109,7 +122,7 @@ print(g)
 
 # -------------------------------------------------------------------
 # -------------------------------------------------------------------
-# XY CONTAGEM MANUAL X AUTOMÁTICA
+# XY CONTAGEM MANUAL X AUTOMÁTICA - JUNTANDO TODAS AS DOBRAS
 #
 dadosContagem <- read.table('./dataset/counting.csv',sep=',',header=TRUE)
 
@@ -119,12 +132,13 @@ i <- 1
 print(nets)
 for (net in nets) {
 
-   filtrado <- dadosContagem[dados$ml == net, ]
+   filtrado <- dadosContagem[dadosContagem$ml == net, ]
 
    RMSE = rmse(filtrado$groundtruth,filtrado$predicted)
    MAE = mae(filtrado$groundtruth,filtrado$predicted)
+   MAPE = mape(filtrado$groundtruth,filtrado$predicted)
    R = cor(filtrado$groundtruth,filtrado$predicted,method = "pearson")
-   TITULO = sprintf("%s RMSE = %.3f MAE =  %.3f r = %.3f",net,RMSE,MAE,R)
+   TITULO = sprintf("%s RMSE=%.3f MAE=%.3f MAPE=%.3f r = %.3f",net,RMSE,MAE,MAPE,R)
    MAX <- max(filtrado$groundtruth, filtrado$predicted)
    
    g <- ggplot(filtrado, aes(x=groundtruth, y=predicted)) + 
@@ -140,8 +154,92 @@ for (net in nets) {
 }
 
 g <- grid.arrange(grobs=graficos, ncol = 2)
-ggsave(paste("./dataset/counting.png", sep=""),g, width = 8, height = 8)
+ggsave(paste("./dataset/counting.png", sep=""),g, width = 10, height = 12)
 print(g)
+
+
+# -------------------------------------------------------------------
+# -------------------------------------------------------------------
+# XY CONTAGEM MANUAL X AUTOMÁTICA - APENAS PARA A PRIMEIRA DOBRA
+#
+dadosContagem <- read.table('./dataset/counting.csv',sep=',',header=TRUE)
+
+graficos <- list()
+i <- 1
+
+dadosContagem <- subset(dadosContagem,fold == 'fold_1')
+print(nets)
+for (net in nets) {
+  
+  filtrado <- dadosContagem[dadosContagem$ml == net, ]
+  
+  RMSE = rmse(filtrado$groundtruth,filtrado$predicted)
+  MAE = mae(filtrado$groundtruth,filtrado$predicted)
+  MAPE = mape(filtrado$groundtruth,filtrado$predicted)
+  R = cor(filtrado$groundtruth,filtrado$predicted,method = "pearson")
+  TITULO = sprintf("%s RMSE=%.3f MAE=%.3f MAPE=%.3f r = %.3f",net,RMSE,MAE,MAPE,R)
+  MAX <- max(filtrado$groundtruth, filtrado$predicted)
+  
+  g <- ggplot(filtrado, aes(x=groundtruth, y=predicted)) + 
+    geom_point()+
+    geom_smooth(method='lm')+
+    labs(title=TITULO ,x="Measured", y = "Predicted")+ theme(plot.title = element_text(size = 10))+
+    xlim(0,MAX)+
+    ylim(0,MAX)
+  
+  print(g)
+  graficos[[i]] <- g
+  i = i + 1
+}
+
+g <- grid.arrange(grobs=graficos, ncol = 2)
+ggsave(paste("./dataset/counting_FOLD_1.png", sep=""),g, width = 10, height = 12)
+print(g)
+
+# -------------------------------------------------------------------
+# -------------------------------------------------------------------
+# Encontra as imagens com as maiores e menores diferenças na contagem
+# -------------------------------------------------------------------
+# -------------------------------------------------------------------
+
+quantos <- 3
+
+dadosContagem <- read.table('./dataset/counting.csv',sep=',',header=TRUE)
+
+# Encontra as 3 maiores diferenças (coluna dif) para cada uma das
+# técnicas (coluna ml), considerando o módulo da diferença (abs(dif))
+# e ordenando em ordem decrescente
+maiores <- dadosContagem %>% group_by(ml) %>% top_n(quantos, abs(dif))
+# Copia as imagens (fileName) com as maiores diferenças de cada ténica (ml)
+# para um diretório separado dentro da pasta dataset/prediction_X onde
+# X é o nome da técnica (coluna ml sem os dois primeiros caracteres)
+for (net in nets) {
+  print(substr(net,3,100))
+  print(maiores[maiores$ml == net, ]$fileName)
+  pastaDaRede <- paste("./dataset/prediction_",substr(net,3,100),"/",sep="")
+  novaPasta <- paste("./dataset/prediction_",substr(net,3,100),"/maiores/",sep="")
+  dir.create(novaPasta, showWarnings = TRUE)
+  file.copy(paste(pastaDaRede,maiores[maiores$ml == net, ]$fileName,sep=""),novaPasta,overwrite = TRUE)
+}
+# A mesma coisa para as 3 menores diferenças
+menores <- dadosContagem %>% group_by(ml) %>% top_n(-quantos, abs(dif))
+for (net in nets) {
+  print(substr(net,3,100))
+  print(menores[menores$ml == net, ]$fileName)
+  pastaDaRede <- paste("./dataset/prediction_",substr(net,3,100),"/",sep="")
+  novaPasta <- paste("./dataset/prediction_",substr(net,3,100),"/menores/",sep="")
+  dir.create(novaPasta, showWarnings = TRUE)
+  file.copy(paste(pastaDaRede,menores[menores$ml == net, ]$fileName,sep=""),novaPasta,overwrite = TRUE)
+}
+
+
+
+
+
+
+
+
+
 
 
 # -------------------------------------------------------------------
@@ -260,3 +358,4 @@ tukey <- TukeyHSD(dados.anova,'dados$ml',conf.level=0.95)
 tukey
 
 sink()
+

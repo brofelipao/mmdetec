@@ -22,8 +22,8 @@ model = dict(
         feat_channels=256,
         anchor_generator=dict(
             type='AnchorGenerator',
-            scales=[8],
-            ratios=[0.5, 1.0, 2.0],
+            scales=[8, 16, 32],
+            ratios=[0.5, 1.0, 2.0, 3.0], 
             strides=[4, 8, 16, 32, 64]),
         bbox_coder=dict(
             type='DeltaXYWHBBoxCoder',
@@ -38,7 +38,7 @@ model = dict(
             type='SingleRoIExtractor',
             roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
             out_channels=256,
-            featmap_strides=[4, 8, 16, 32]),
+            featmap_strides=[2, 4, 8, 16]),
         bbox_head=dict(
             type='Shared2FCBBoxHead',
             in_channels=256,
@@ -58,9 +58,9 @@ model = dict(
         rpn=dict(
             assigner=dict(
                 type='MaxIoUAssigner',
-                pos_iou_thr=0.1,
-                neg_iou_thr=0.6,
-                min_pos_iou=0,
+                pos_iou_thr=0.5,
+                neg_iou_thr=0.2,
+                min_pos_iou=0.01,
                 match_low_quality=True,
                 ignore_iof_thr=-1),
             sampler=dict(
@@ -75,14 +75,14 @@ model = dict(
         rpn_proposal=dict(
             nms_pre=2000,
             max_per_img=1000,
-            nms=dict(type='nms', iou_threshold=0),
+            nms=dict(type='nms', iou_threshold=0.2),
             min_bbox_size=0),
         rcnn=dict(
             assigner=dict(
                 type='MaxIoUAssigner',
-                pos_iou_thr=0.1,
-                neg_iou_thr=0.6,
-                min_pos_iou=0,
+                pos_iou_thr=0.5,
+                neg_iou_thr=0.2,
+                min_pos_iou=0.01,
                 match_low_quality=False,
                 ignore_iof_thr=-1),
             sampler=dict(
@@ -97,11 +97,11 @@ model = dict(
         rpn=dict(
             nms_pre=1000,
             max_per_img=1000,
-            nms=dict(type='nms', iou_threshold=0),
+            nms=dict(type='nms', iou_threshold=0.2),
             min_bbox_size=0),
         rcnn=dict(
             score_thr=0.05,
-            nms=dict(type='nms', iou_threshold=0),
+            nms=dict(type='nms', iou_threshold=0.2),
             max_per_img=1000)
         # soft-nms is also supported for rcnn testing
         # e.g., nms=dict(type='soft_nms', iou_threshold=0.5, min_score=0.05)

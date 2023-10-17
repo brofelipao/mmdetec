@@ -1,22 +1,39 @@
 # Código que irá treinar as redes, executar os testes e gravar os resultados
 # Autor: Cedido pelo Prof. Jonathan Andrade Silva (UFMS)
-#        Pequenas adaptações feitas por Hemerson Pistori (pistori@ucdb.br)
-
+#        Adaptações feitas por Hemerson Pistori (pistori@ucdb.br)
+#
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 #
 # DEFINE ALGUNS HIPERPARÂMETROS
+import json
+import os
 
-CLASSES=('larvae',)
-DOBRAS=5
-EPOCAS=15
+CLASSES=()
+DOBRAS=0 # Não precisa mais mexer, vai calcular automaticamente.
+EPOCAS=5
 LIMIAR_CLASSIFICADOR=0.5
-# Define a quantidade mínima de sobreposição necessária para considerar uma detecção como verdadeira positiva.
-# Vou utilizar um valor baixo pois o objetivo nao e identificar a posicao, e sim, a quantidade
-LIMIAR_IOU=0
+LIMIAR_IOU=0.3
 
 APENAS_TESTA=False
 SALVAR_IMAGENS=True
+MOSTRA_NOME_CLASSE=len(CLASSES)>1
+
+# COLOCA AS CATEGORIAS NA VARIAVEL CLASSE
+with open('dataset/all/train/_annotations.coco.json', 'r') as file:
+    data = json.load(file)
+
+    for category in data["categories"]:
+      # if not category["supercategory"] == "none":
+        CLASSES += (category["name"],)
+
+
+# CONTA A QUANTIA DE DOBRAS BASEADO NO NUMERO DE ARQUIVOS
+dir_path = r'dataset/filesJSON'
+DOBRAS = len(os.listdir(dir_path)) // 3
+
+print('Classes detectadas: ', CLASSES)
+print('Total de Dobras:    ', DOBRAS, '\n')
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
@@ -42,7 +59,7 @@ from mmcv import Config
 import os
 import sys
 import time
-import matplotlib
+import mmdet
 import matplotlib.pylab as plt
 from mmdet.datasets import build_dataset,build_dataloader
 from mmdet.models import build_detector
@@ -63,8 +80,8 @@ import cv2
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 import math
-
-
+import wget
+from url import url
 
 
 
@@ -100,10 +117,18 @@ plt.rcParams["axes.grid"] = False
 
 
 #Taxa de Aprendizado para cada Rede, seguindo a sequencia que aparece no MODELS_CONFIG
-TAXA_APRENDIZAGEM=[0.05,0.01,0.05,0.01,0.05,0.05]
+TAXA_APRENDIZAGEM=6*[0.001]
 
 
 MODELS_CONFIG = {
+    # 'sabl': {
+    #     'config_file': 'configs/sabl/sabl_retinanet_r50_fpn_1x_coco.py',
+    #     'checkpoint' : pasta_checkpoints+'/sabl_retinanet_r50_fpn_1x_coco-6c54fd4f.pth'
+    # },
+    # 'fovea': {
+    #     'config_file': 'configs/foveabox/fovea_r50_fpn_4x4_1x_coco.py',
+    #     'checkpoint' : pasta_checkpoints+'/fovea_r50_fpn_4x4_1x_coco_20200219-ee4d5303.pth'
+    # },
     'faster':{
         'config_file': 'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py',
         'checkpoint': pasta_checkpoints+'/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth'
@@ -112,23 +137,10 @@ MODELS_CONFIG = {
         'config_file': 'configs/retinanet/retinanet_r50_fpn_1x_coco.py',
         'checkpoint': pasta_checkpoints+'/retinanet_r50_fpn_1x_coco_20200130-c2398f9e.pth'
     },
-#    'atss':{
-#        'config_file': 'configs/atss/atss_r50_fpn_1x_coco.py',
-#        'checkpoint' : pasta_checkpoints+'/atss_r50_fpn_1x_coco_20200209-985f7bd0.pth'
-#    },
-#    'vfnet': {
-#        'config_file': 'configs/vfnet/vfnet_r50_fpn_1x_coco.py',
-#        'checkpoint' : pasta_checkpoints+'/vfnet_r50_fpn_1x_coco_20201027-38db6f58.pth'
-#    },
-#    'sabl': {
-#        'config_file': 'configs/sabl/sabl_retinanet_r50_fpn_1x_coco.py',
-#        'checkpoint' : pasta_checkpoints+'/sabl_retinanet_r50_fpn_1x_coco-6c54fd4f.pth'
-#    },
-#     
-#     'fovea': {
-#        'config_file': 'configs/foveabox/fovea_r50_fpn_4x4_1x_coco.py',
-#        'checkpoint' : pasta_checkpoints+'/fovea_r50_fpn_4x4_1x_coco_20200219-ee4d5303.pth'
-#    },
+    # 'atss':{
+    #     'config_file': 'configs/atss/atss_r50_fpn_1x_coco.py',
+    #     'checkpoint' : pasta_checkpoints+'/atss_r50_fpn_1x_coco_20200209-985f7bd0.pth'
+    # }
 }
 
 
@@ -136,7 +148,14 @@ print('Arquiteturas que serão testadas:')
 print(MODELS_CONFIG)
 REDES=[k for k in MODELS_CONFIG.keys()]
 
+if not os.path.exists(pasta_checkpoints):
+  print('\nCriando diretório checkpoints...')
+  os.makedirs('checkpoints')
 
+for a in REDES:
+  if not os.path.exists(MODELS_CONFIG[a]['checkpoint']):
+    print('\nBaixando checkpoint da', a)
+    wget.download(url[a], out=pasta_checkpoints)
 
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
@@ -168,8 +187,7 @@ def setCFG(selected_model,
   #defining configuration for test dataset
   cfg.data.test.type = cfg.dataset_type
   cfg.data.test.data_root = cfg.data_root
-  # cfg.data.test.ann_file = 'filesJSON/instances.json'
-  cfg.data.test.ann_file = f'filesJSON/{fold}_test.json'
+  cfg.data.test.ann_file = 'filesJSON/'+fold+'_test.json'
   cfg.data.test.classes = cfg.classes
   cfg.data.test.img_prefix = 'all/train' # As imagens ficam todos em all/train mesmo 
   # SÃO OS ARQUIVO .JSON QUE FAZEM A DIVISÃO"
@@ -177,8 +195,7 @@ def setCFG(selected_model,
   #defining configuration for train dataset
   cfg.data.train.type = cfg.dataset_type
   cfg.data.train.data_root = cfg.data_root
-  #cfg.data.train.ann_file = 'filesJSON/instances.json'
-  cfg.data.train.ann_file = f'filesJSON/{fold}_train.json'
+  cfg.data.train.ann_file = 'filesJSON/'+fold+'_train.json'
   cfg.data.train.classes = cfg.classes
   cfg.data.train.img_prefix = 'all/train'# As imagens ficam todos em all/train mesmo 
   # SÃO OS ARQUIVO .JSON QUE FAZEM A DIVISÃO"
@@ -186,8 +203,7 @@ def setCFG(selected_model,
   #defining configuration for val dataset
   cfg.data.val.type = cfg.dataset_type
   cfg.data.val.data_root = cfg.data_root
-  # cfg.data.val.ann_file = 'filesJSON/instances.json'
-  cfg.data.val.ann_file = f'filesJSON/{fold}_val.json'
+  cfg.data.val.ann_file = 'filesJSON/'+fold+'_val.json'
   cfg.data.val.classes = cfg.classes
   cfg.data.val.img_prefix =  'all/train' # As imagens ficam todos em train mesmo 
   # SÃO OS ARQUIVO .JSON QUE FAZEM A DIVISÃO"
@@ -195,7 +211,7 @@ def setCFG(selected_model,
   
   # modify num classes of the model in box head
   if 'roi_head' in cfg.model:
-    #cfg.test_cfg.rcnn['score_thr']= 0.51
+    # cfg.test_cfg.rcnn['score_thr']= 0.3
     if not isinstance(cfg.model.roi_head.bbox_head,list):
       cfg.model.roi_head.bbox_head['num_classes'] = len(cfg.classes)
     else: 
@@ -254,7 +270,7 @@ def setCFG(selected_model,
 # FUNÇÃO AUXILIAR PARA ESCREVER EM ARQUIVO
 #
   
-# Vai salar os resultados no arquivo dataset/results.csv
+# Vai salvar os resultados no arquivo dataset/results.csv
 def printToFile(linha='',arquivo='dataset/results.csv',modo='a'):
   original_stdout = sys.stdout # Save a reference to the original standard output
   with open(arquivo, modo) as f:
@@ -434,7 +450,12 @@ def testingModel(cfg=None,typeN='test',models_path=None,show_imgs=False,save_img
 
   coco_dataset = CocoDataset(ann_file=ann_file, classes=cfg.classes,data_root=cfg.data_root,img_prefix=img_prefix,pipeline=cfg.train_pipeline,filter_empty_gt=False)
 
-  MAX_BOX=5000
+
+  # Vai desenhar os retângulos na imagem:
+  # AZUL: Anotações feitas por humanos
+  # VERDE: Detecção feita automaticamente e que tem intersecção com uma caixa dos humanos (VP = Verdadeiro Positivo)
+  # VERMELHO: Detecção feita automaticamente mas sem intersecção com anotação (FP = Falso Positivo)
+  MAX_BOX=1000
   results=[]
   medidos=[]
   preditos=[]
@@ -451,7 +472,6 @@ def testingModel(cfg=None,typeN='test',models_path=None,show_imgs=False,save_img
     #modelx.show_result(imagex, resultx, score_thr=0.3, out_file=models_path + dt['file_name'])
 
 
-    #GT BBOXS VERMELHOS  GroundTruth  
     ann = coco_dataset.get_ann_info(i)
     labels = ann['labels']
     bboxes = np.insert(ann['bboxes'],4,0.91,axis=1)
@@ -465,7 +485,6 @@ def testingModel(cfg=None,typeN='test',models_path=None,show_imgs=False,save_img
       ground_thruth.append({'x1':left_top[0],'x2':right_bottom[0],'y1':left_top[1],'y2':right_bottom[1],'class':labels[j]})
       imagex=cv2.rectangle(imagex, left_top, right_bottom, color_val('blue'), thickness=1)
     
-    #RESULTADOS BBOXS VERDES Prediction
     bboxes2 = []
     for j in range(len(resultx)):
       for bb in resultx[j]:
@@ -501,12 +520,14 @@ def testingModel(cfg=None,typeN='test',models_path=None,show_imgs=False,save_img
         if TP == True:
           cont_TP+=1
           imagex=cv2.rectangle(imagex, left_top, right_bottom, color_val('green'), thickness=1) 
-          cv2.putText(imagex, CLASSES[bboxes2[j]['class']], left_top_text, cv2.FONT_HERSHEY_SIMPLEX, 0.9, color_val('green'), thickness=2) 
+          if MOSTRA_NOME_CLASSE:
+            cv2.putText(imagex, CLASSES[bboxes2[j]['class']], left_top_text, cv2.FONT_HERSHEY_SIMPLEX, 0.9, color_val('green'), thickness=2) 
 
         else:
           cont_FP+=1
           imagex=cv2.rectangle(imagex, left_top, right_bottom, color_val('red'), thickness=1)    
-          cv2.putText(imagex, CLASSES[bboxes2[j]['class']], left_top_text, cv2.FONT_HERSHEY_SIMPLEX, 0.9, color_val('red'), thickness=2)
+          if MOSTRA_NOME_CLASSE:
+            cv2.putText(imagex, CLASSES[bboxes2[j]['class']], left_top_text, cv2.FONT_HERSHEY_SIMPLEX, 0.9, color_val('red'), thickness=2)
 
 #    print("TP:"+ str(cont_TP))
     all_TP+=cont_TP    
@@ -549,7 +570,8 @@ def testingModel(cfg=None,typeN='test',models_path=None,show_imgs=False,save_img
 
 
     results.append(resultx)
-    printToFile(str(num_model)+'_'+selected_model + ','+fold+','+str(objetos_medidos)+','+str(objetos_preditos)+','+str(cont_TP)+','+str(cont_FP),'dataset/counting.csv','a')
+    diferenca=objetos_preditos-objetos_medidos
+    printToFile(str(num_model)+'_'+selected_model + ','+fold+','+str(objetos_medidos)+','+str(objetos_preditos)+','+str(cont_TP)+','+str(cont_FP)+','+str(diferenca)+','+dt['file_name'],'dataset/counting.csv','a')
     
   print("preditos:")  
   print(preditos) 
@@ -614,40 +636,26 @@ def testingModel(cfg=None,typeN='test',models_path=None,show_imgs=False,save_img
 #
 
 
-
-if(not APENAS_TESTA):
-  for selected_model in REDES:
-    for f in np.arange(1,DOBRAS+1):
-      print('------------------------------------------------------')
-      print('-- RODANDO COM A REDE ',selected_model,' NA DOBRA ',f)
-      print('------------------------------------------------------')
-      fold = 'fold_'+str(f)
-      cfg = setCFG(selected_model=selected_model,data_root=pasta_dataset,classes=CLASSES,fold=fold)
-      trainModel(cfg)
-
-
-
-
-    
-#----------------------------------------------------------------------------
-#----------------------------------------------------------------------------
-#
-# RODA NO CONJUNTO DE TESTE
-#
-
-
-print('======================================================')
-print(' INICIANDO TESTE - INICIANDO TESTE - INICIANDO TESTE')
-print('======================================================')
-
-printToFile('ml,fold,groundtruth,predicted,TP,FP','dataset/counting.csv','w')
-
+printToFile('ml,fold,groundtruth,predicted,TP,FP,dif,fileName','dataset/counting.csv','w')
 printToFile('ml,fold,mAP,mAP50,mAP75,MAE,RMSE,r,precision,recall,fscore','dataset/results.csv','w')
-i=1
+
+errors = [] # variavel que armazenara o nome/erro de cada model que retornar um erro
+
+i = 1
 for selected_model in REDES:
+  try:
     for f in np.arange(1,DOBRAS+1):
+      if(not APENAS_TESTA):
+        print('------------------------------------------------------')
+        print('-- TREINANDO COM A REDE ',selected_model,' NA DOBRA ',f)
+        print('------------------------------------------------------')
+        fold = 'fold_'+str(f)
+        cfg = setCFG(selected_model=selected_model,data_root=pasta_dataset,classes=CLASSES,fold=fold)
+        trainModel(cfg)
+
+      # Testando a rede treinada
       print('------------------------------------------------------')
-      print('-- TESTANDO A REDE ',selected_model,' NA DOBRA ',f)
+      print('-- TESTANDO COM A REDE ',selected_model,' NA DOBRA ',f)
       print('------------------------------------------------------')
 
       fold = 'fold_'+str(f)
@@ -657,6 +665,22 @@ for selected_model in REDES:
       print('Usando o modelo aprendido: ',pth)
       resAP50 = testingModel(cfg=cfg,models_path=pth,show_imgs=False,save_imgs=SALVAR_IMAGENS,num_model=i,fold=fold)
       printToFile(str(i)+'_'+selected_model + ','+fold+','+resAP50,'dataset/results.csv','a')
-    i=i+1
-  
+  except MemoryError:
+    print('\n\nA rede ', selected_model, ' excedeu a quantia de memoria disponivel.', '\n')
+    errors.append({"selected_model": selected_model, "type": "MemoryError"})
+  except Exception as error:
+    print('\n\nErro inesperado na rede ', selected_model, '\n')
+    errors.append({"selected_model": selected_model, "type": error})
 
+  i=i+1
+
+
+if (len(errors)):
+  print('\n----------------------------------------------------------------')
+  print('-- As seguintes redes retornaram erros durante suas execuções --')
+  print('----------------------------------------------------------------')
+
+  for e in errors:
+    print('\nRede: ', e["selected_model"], '\nTipo de erro: ', e["type"])
+else:
+  print('\n\nTodas as redes foram executadas com sucesso!')
