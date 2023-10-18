@@ -53,8 +53,8 @@ model = dict(
         pos_weight=-1,
         debug=False),
     test_cfg=dict(
-        nms_pre=500,
+        nms_pre=1000,
         min_bbox_size=0,
         score_thr=0.4,
         nms=dict(type='nms', iou_threshold=0.2),
-        max_per_img=500))
+        max_per_img=1000))
